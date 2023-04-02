@@ -1,0 +1,5 @@
+*target
+.cargo
+.idea
+*.pem
+*.env
