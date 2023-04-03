@@ -86,6 +86,7 @@ pub extern "C" fn call() {
     let option_one: String = runtime::get_named_arg(RUNTIME_OPTION_ONE_ARG);
     let option_two: String = runtime::get_named_arg(RUNTIME_OPTION_TWO_ARG);
 
+<<<<<<< Updated upstream
     let mut depoll_named_keys = NamedKeys::new();
 
     // Create a new Poll instance and call its init function with the options argument
@@ -103,6 +104,31 @@ pub extern "C" fn call() {
         None => storage::dictionary_put(options_dict_seed_uref, &option_two, INITIAL_VOTE_COUNT),
         Some(_) => runtime::revert(Error::KeyAlreadyExists),
     }
+=======
+    let options = vec![option_one, option_two];
+    // Create a new Poll instance and call its init function with the options argument
+    let options_dict_seed_uref = storage::new_dictionary(CONTRACT_OPTIONS_KEY).unwrap_or_revert();
+
+    for option in options {
+        let option_ref = storage::new_uref(option);
+
+        runtime::put_key(option, option_ref.into());
+        // runtime::put_key(CONTRACT_OPTIONS_DICT_REF, casper_types::Key::URef(options_dict_seed_uref));
+        // Add poll option one
+        match storage::dictionary_get::<u64>(options_dict_seed_uref, &option).unwrap_or_revert()
+        {
+            None => storage::dictionary_put(options_dict_seed_uref, &option, INITIAL_VOTE_COUNT),
+            Some(_) => runtime::revert(Error::KeyAlreadyExists),
+        }
+    }
+
+    let mut depoll_named_keys = NamedKeys::new();
+
+    // Set URefs for new question
+    let question_ref = storage::new_uref(question);
+    // Put the NamedKey value.
+    runtime::put_key(CONTRACT_QUESTION_KEY, question_ref.into());
+>>>>>>> Stashed changes
 
     // Create entry points for this contract
     let mut depoll_entry_points = EntryPoints::new();
@@ -111,7 +137,7 @@ pub extern "C" fn call() {
     depoll_entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_VOTE,
         vec![Parameter::new(RUNTIME_VOTE_ARG, CLType::String)],
-        CLType::String,
+        CLType::Unit,
         EntryPointAccess::Public,
         EntryPointType::Contract,
     ));
@@ -123,6 +149,7 @@ pub extern "C" fn call() {
         Some("contract_access_uref".to_string()),
     );
 
+<<<<<<< Updated upstream
     let depoll_contract_uref = storage::new_uref(depoll_contract_hash);
 
     let depoll_options_dict_seed_key = Key::URef(depoll_contract_uref);
@@ -133,4 +160,24 @@ pub extern "C" fn call() {
     let key = Key::URef(depoll_dict_seed_uref);
     runtime::put_key(CONTRACT_OPTIONS_KEY, key);
 
+=======
+    let options_seed_uref = storage::new_uref(options_dict_seed_uref);
+
+    // let depoll_options_dict_seed_key = Key::URef(options_seed_uref);
+    runtime::put_key(CONTRACT_OPTIONS_DICT_REF, options_seed_uref.into());
+
+    // Create new URefs for contract hashes
+    let depoll_contract_version_ref = storage::new_uref(depoll_contract_version_hash);
+    let depoll_contract_package_ref = storage::new_uref(depoll_contract_package_hash);
+
+    // Create a new Key for NamedKeys
+    // let contract_version_key = Key::URef(depoll_contract_version_ref);
+    // let contract_package_hash_key = Key::URef(depoll_contract_package_ref);
+
+    // Create a NamedKey for the contract version
+    runtime::put_key(CONTRACT_VERSION_KEY, depoll_contract_version_ref.into());
+
+    // Create a named key for the contract package hash
+    runtime::put_key(CONTRACT_PACKAGE_HASH, depoll_contract_package_ref.into());
+>>>>>>> Stashed changes
 }
