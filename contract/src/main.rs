@@ -55,29 +55,6 @@ impl From<Error> for ApiError {
     }
 }
 
-// Define the struct for the voting contract
-#[derive(Default)]
-pub struct Poll {
-    options: Vec<String>,
-    votes: Vec<u64>,
-}
-
-#[no_mangle]
-pub extern "C" fn add_option(new_option: String) {
-    // Get URef of dictionary.
-    let poll_options_uref: URef = runtime::get_key(CONTRACT_OPTIONS_KEY)
-        .unwrap_or_revert_with(ApiError::MissingKey)
-        .into_uref()
-        .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
-
-    match storage::dictionary_get::<u64>(poll_options_uref, &new_option)
-        .unwrap_or_revert()
-    {
-        None => storage::dictionary_put(poll_options_uref, &new_option, 0u64),
-        Some(_) => runtime::revert(Error::KeyAlreadyExists),
-    }
-}
-
 #[no_mangle]
 pub extern "C" fn vote(vote: String) {
     // Get the options dictionary seed URef
@@ -93,7 +70,7 @@ pub extern "C" fn vote(vote: String) {
 
         Some(_) => {
             let old_option_value: u64 =
-                storage::dictionary_get(options_dict_seed_uref, vote.clone().as_str())
+                storage::dictionary_get(options_dict_seed_uref, &vote)
                     .unwrap_or_revert_with(ApiError::Read)
                     .unwrap_or_revert_with(ApiError::ValueNotFound);
             let new_option_value: u64 = old_option_value + 1;
@@ -109,20 +86,10 @@ pub extern "C" fn call() {
     let option_one: String = runtime::get_named_arg(RUNTIME_OPTION_ONE_ARG);
     let option_two: String = runtime::get_named_arg(RUNTIME_OPTION_TWO_ARG);
 
-
-
     let mut depoll_named_keys = NamedKeys::new();
-
-    // Set URefs for new question
-    let question_ref = storage::new_uref(question);
-    // Create a new Key for NamedKeys
-    let question_key = Key::URef(question_ref);
-    // Put the NamedKey value.
-    runtime::put_key(CONTRACT_QUESTION_KEY, question_key);
 
     // Create a new Poll instance and call its init function with the options argument
     let options_dict_seed_uref = storage::new_dictionary(CONTRACT_OPTIONS_KEY).unwrap_or_revert();
-    // runtime::put_key(CONTRACT_OPTIONS_DICT_REF, casper_types::Key::URef(options_dict_seed_uref));
     // Add poll option one
     match storage::dictionary_get::<u64>(options_dict_seed_uref, &option_one).unwrap_or_revert()
     {
@@ -149,30 +116,21 @@ pub extern "C" fn call() {
         EntryPointType::Contract,
     ));
 
-    // Create a new contract package with various NamedKeys, applied contract package hash, and entrypoints.
-    let (depoll_contract_package_hash, depoll_contract_version_hash) = storage::new_contract(
+    let (depoll_contract_hash, _) = storage::new_locked_contract(
         depoll_entry_points,
         Some(depoll_named_keys),
-        Some(CONTRACT_PACKAGE_HASH.to_string()),
-        Some("dePoll_contract_package_hash".to_string()),
+        Some("depoll_contract_package".to_string()),
+        Some("contract_access_uref".to_string()),
     );
 
-    let options_seed_uref = storage::new_uref(options_dict_seed_uref);
+    let depoll_contract_uref = storage::new_uref(depoll_contract_hash);
 
-    let depoll_options_dict_seed_key = Key::URef(options_seed_uref);
-    runtime::put_key(CONTRACT_OPTIONS_DICT_REF, depoll_options_dict_seed_key);
+    let depoll_options_dict_seed_key = Key::URef(depoll_contract_uref);
+    runtime::put_key(CONTRACT_HASH, depoll_options_dict_seed_key);
 
-    // Create new URefs for contract hashes
-    let depoll_contract_version_ref = storage::new_uref(depoll_contract_version_hash);
-    let depoll_contract_package_ref = storage::new_uref(depoll_contract_package_hash);
+    // store dict seed URef
+    let depoll_dict_seed_uref = storage::new_uref(options_dict_seed_uref);
+    let key = Key::URef(depoll_dict_seed_uref);
+    runtime::put_key(CONTRACT_OPTIONS_KEY, key);
 
-    // Create a new Key for NamedKeys
-    let contract_version_key = Key::URef(depoll_contract_version_ref);
-    let contract_package_hash_key = Key::URef(depoll_contract_package_ref);
-
-    // Create a NamedKey for the contract version
-    runtime::put_key(CONTRACT_VERSION_KEY, contract_version_key);
-
-    // Create a named key for the contract package hash
-    runtime::put_key(CONTRACT_PACKAGE_HASH, contract_package_hash_key);
 }
