@@ -55,7 +55,8 @@ impl From<Error> for ApiError {
 }
 
 #[no_mangle]
-pub extern "C" fn vote(vote: String) {
+pub extern "C" fn vote() {
+    let new_vote: String = runtime::get_named_arg(RUNTIME_VOTE_ARG);
     // Get the options dictionary seed URef
     let options_dict_seed_uref: URef = runtime::get_key(CONTRACT_OPTIONS_DICT_REF)
         .unwrap_or_revert_with(ApiError::MissingKey)
@@ -63,17 +64,15 @@ pub extern "C" fn vote(vote: String) {
         .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
 
     // Update the value of the vote option in the dictionary
-    // storage::dictionary_put(options_dict_seed_uref, vote, option_value);
-    match storage::dictionary_get::<u64>(options_dict_seed_uref, &vote).unwrap_or_revert() {
+    match storage::dictionary_get::<u64>(options_dict_seed_uref, &new_vote).unwrap_or_revert() {
         None => runtime::revert(Error::InvalidVoteSubmission),
-
         Some(_) => {
             let old_option_value: u64 =
-                storage::dictionary_get(options_dict_seed_uref, &vote)
+                storage::dictionary_get(options_dict_seed_uref, &new_vote)
                     .unwrap_or_revert_with(ApiError::Read)
                     .unwrap_or_revert_with(ApiError::ValueNotFound);
             let new_option_value: u64 = old_option_value + 1;
-            storage::dictionary_put(options_dict_seed_uref, &vote, new_option_value);
+            storage::dictionary_put(options_dict_seed_uref, &new_vote, new_option_value);
         }
     }
 }
@@ -111,7 +110,7 @@ pub extern "C" fn call() {
     depoll_entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_VOTE,
         vec![Parameter::new(RUNTIME_VOTE_ARG, CLType::String)],
-        CLType::Unit,
+        CLType::String,
         EntryPointAccess::Public,
         EntryPointType::Contract,
     ));
@@ -120,8 +119,8 @@ pub extern "C" fn call() {
     let (depoll_contract_hash, depoll_contract_version_hash) = storage::new_contract(
         depoll_entry_points,
         Some(depoll_named_keys),
-        Some(CONTRACT_PACKAGE_HASH.to_string()),
-        Some("dePoll_contract_package_hash".to_string()),
+        Some("depoll_package_hash".to_string()),
+        Some("depoll_contract_access_uref".to_string()),
     );
 
     // Create new URefs for namedkeys
@@ -130,9 +129,14 @@ pub extern "C" fn call() {
     let depoll_contract_version_ref = storage::new_uref(depoll_contract_version_hash);
     let question_ref = storage::new_uref(question);
 
+    let depoll_contract_key = Key::URef(depoll_contract_uref);
+    let depoll_dict_key = Key::URef(options_seed_uref);
+    let depoll_version_key = Key::URef(depoll_contract_version_ref);
+    let depoll_question_key = Key::URef(question_ref);
+
     // Put the NamedKey values.
-    runtime::put_key(CONTRACT_QUESTION_KEY, question_ref.into());
-    runtime::put_key(CONTRACT_VERSION_KEY, depoll_contract_version_ref.into());
-    runtime::put_key(CONTRACT_OPTIONS_DICT_REF, options_seed_uref.into());
-    runtime::put_key(CONTRACT_HASH, depoll_contract_uref.into());
+    runtime::put_key(CONTRACT_QUESTION_KEY, depoll_question_key);
+    runtime::put_key(CONTRACT_VERSION_KEY, depoll_version_key);
+    runtime::put_key(CONTRACT_OPTIONS_DICT_REF, depoll_dict_key);
+    runtime::put_key(CONTRACT_HASH, depoll_contract_key);
 }
