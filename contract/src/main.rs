@@ -31,7 +31,8 @@ const CONTRACT_HASH: &str = "depoll_contract_hash";
 const CONTRACT_PACKAGE_HASH: &str = "depoll_contract_package_hash";
 const CONTRACT_VERSION_KEY: &str = "version";
 const RUNTIME_QUESTION_ARG: &str = "question";
-const RUNTIME_OPTIONS_ARG: &str = "option";
+const RUNTIME_OPTION_ONE_ARG: &str = "option_one";
+const RUNTIME_OPTION_TWO_ARG: &str = "option_two";
 const ENTRY_POINT_VOTE: &str = "vote";
 const RUNTIME_VOTE_ARG: &str = "vote_for";
 const ENTRY_POINT_INIT: &str = "init";
@@ -58,17 +59,15 @@ pub struct Poll {
     votes: Vec<u64>,
 }
 
-impl Poll {
-    pub fn init(options: Vec<String>) {
-        let options_dict_seed_uref =
-            storage::new_dictionary(CONTRACT_OPTIONS_KEY).unwrap_or_revert();
-        for options_dict_key in options {
-            match storage::dictionary_get::<u64>(options_dict_seed_uref, &options_dict_key)
-                .unwrap_or_revert()
-            {
-                None => storage::dictionary_put(options_dict_seed_uref, &options_dict_key, 0u64),
-                Some(_) => runtime::revert(Error::KeyAlreadyExists),
-            }
+#[no_mangle]
+pub extern "C" fn init(options: Vec<String>) {
+    let options_dict_seed_uref = storage::new_dictionary(CONTRACT_OPTIONS_KEY).unwrap_or_revert();
+    for options_dict_key in options {
+        match storage::dictionary_get::<u64>(options_dict_seed_uref, &options_dict_key)
+            .unwrap_or_revert()
+        {
+            None => storage::dictionary_put(options_dict_seed_uref, &options_dict_key, 0u64),
+            Some(_) => runtime::revert(Error::KeyAlreadyExists),
         }
     }
 }
@@ -99,7 +98,7 @@ pub extern "C" fn vote(vote: String) {
 #[no_mangle]
 pub extern "C" fn initialize(options: Vec<String>) {
     // Create a new Poll instance and call its init function with the options argument
-    Poll::init(options);
+    init(options);
 }
 
 #[no_mangle]
@@ -107,12 +106,13 @@ pub extern "C" fn call() {
     // Get Poll Question and Options
     let question: String = runtime::get_named_arg(RUNTIME_QUESTION_ARG);
     // let options: Vec<String> = runtime::get_named_arg(RUNTIME_OPTIONS_ARG);
+    let option_one: String = runtime::get_named_arg(RUNTIME_OPTION_ONE_ARG);
+    let option_two: String = runtime::get_named_arg(RUNTIME_OPTION_TWO_ARG);
     let mut options: Vec<String> = Vec::new();
 
+    options.push(option_one);
+    options.push(option_two);
     // Get the options argument from the context's named args
-    for option in runtime::get_named_arg::<Vec<String>>(RUNTIME_OPTIONS_ARG) {
-        options.push(option);
-    }
 
     // Set URefs for new question
     let question_ref = storage::new_uref(question);
@@ -144,7 +144,10 @@ pub extern "C" fn call() {
     // Initilization entrypoint -- not public
     depoll_entry_points.add_entry_point(EntryPoint::new(
         ENTRY_POINT_INIT,
-        vec![Parameter::new(RUNTIME_OPTIONS_ARG, CLType::String)],
+        vec![
+            Parameter::new(RUNTIME_OPTION_ONE_ARG, CLType::String),
+            Parameter::new(RUNTIME_OPTION_TWO_ARG, CLType::String)
+        ],
         CLType::String,
         EntryPointAccess::Public,
         EntryPointType::Contract,
