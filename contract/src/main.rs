@@ -63,17 +63,16 @@ pub extern "C" fn vote() {
         .into_uref()
         .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
 
+    let old_option_value: u64 =
+        storage::dictionary_get(options_dict_seed_uref, &new_vote)
+            .unwrap_or_revert_with(ApiError::Read)
+            .unwrap_or_revert_with(ApiError::ValueNotFound);
+    let mut new_option_value: u64 = old_option_value + 1;
+
     // Update the value of the vote option in the dictionary
     match storage::dictionary_get::<u64>(options_dict_seed_uref, &new_vote).unwrap_or_revert() {
         None => runtime::revert(Error::InvalidVoteSubmission),
-        Some(_) => {
-            let old_option_value: u64 =
-                storage::dictionary_get(options_dict_seed_uref, &new_vote)
-                    .unwrap_or_revert_with(ApiError::Read)
-                    .unwrap_or_revert_with(ApiError::ValueNotFound);
-            let new_option_value: u64 = old_option_value + 1;
-            storage::dictionary_put(options_dict_seed_uref, &new_vote, new_option_value);
-        }
+        Some(_) => storage::dictionary_put(options_dict_seed_uref, &new_vote, new_option_value),
     }
 }
 
