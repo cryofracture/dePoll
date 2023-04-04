@@ -58,7 +58,7 @@ impl From<Error> for ApiError {
 pub extern "C" fn vote() {
     let new_vote: String = runtime::get_named_arg(RUNTIME_VOTE_ARG);
     // Get the options dictionary seed URef
-    let options_dict_seed_uref: URef = runtime::get_key(CONTRACT_OPTIONS_DICT_REF)
+    let options_dict_seed_uref: URef = runtime::get_key(CONTRACT_OPTIONS_KEY)
         .unwrap_or_revert_with(ApiError::MissingKey)
         .into_uref()
         .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
@@ -87,6 +87,7 @@ pub extern "C" fn call() {
 
     // Create a new Poll instance and call its init function with the options argument
     let options_dict_seed_uref = storage::new_dictionary(CONTRACT_OPTIONS_KEY).unwrap_or_revert();
+    // let mut depoll_named_keys = NamedKeys::new();
 
     for option in options {
         // let option_ref = storage::new_uref(option);
@@ -102,6 +103,20 @@ pub extern "C" fn call() {
     }
 
     let mut depoll_named_keys = NamedKeys::new();
+    // Create new URefs for namedkeys
+
+    let options_seed_uref = storage::new_uref(options_dict_seed_uref);
+    let question_ref = storage::new_uref(question);
+
+    // Create new Keys
+
+    let depoll_dict_key = Key::URef(options_seed_uref);
+    let depoll_question_key = Key::URef(question_ref);
+
+    // Put Keys to Contract context
+    depoll_named_keys.insert(CONTRACT_QUESTION_KEY.to_string(), depoll_question_key);
+    depoll_named_keys.insert(CONTRACT_OPTIONS_DICT_REF.to_string(), depoll_dict_key);
+
     // Create entry points for this contract
     let mut depoll_entry_points = EntryPoints::new();
 
@@ -122,20 +137,16 @@ pub extern "C" fn call() {
         Some("depoll_contract_access_uref".to_string()),
     );
 
-    // Create new URefs for namedkeys
     let depoll_contract_uref = storage::new_uref(depoll_contract_hash);
-    let options_seed_uref = storage::new_uref(options_dict_seed_uref);
     let depoll_contract_version_ref = storage::new_uref(depoll_contract_version_hash);
-    let question_ref = storage::new_uref(question);
-
     let depoll_contract_key = Key::URef(depoll_contract_uref);
-    let depoll_dict_key = Key::URef(options_seed_uref);
     let depoll_version_key = Key::URef(depoll_contract_version_ref);
-    let depoll_question_key = Key::URef(question_ref);
+    // depoll_named_keys.insert(CONTRACT_VERSION_KEY.to_string(), depoll_version_key);
+    // depoll_named_keys.insert(CONTRACT_HASH.to_string(), depoll_contract_key);
 
     // Put the NamedKey values.
-    runtime::put_key(CONTRACT_QUESTION_KEY, depoll_question_key);
+    // runtime::put_key(CONTRACT_QUESTION_KEY, depoll_question_key);
     runtime::put_key(CONTRACT_VERSION_KEY, depoll_version_key);
-    runtime::put_key(CONTRACT_OPTIONS_DICT_REF, depoll_dict_key);
+    // runtime::put_key(CONTRACT_OPTIONS_DICT_REF, depoll_dict_key);
     runtime::put_key(CONTRACT_HASH, depoll_contract_key);
 }
