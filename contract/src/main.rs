@@ -112,10 +112,11 @@ pub extern "C" fn call() {
 
     let depoll_dict_key = Key::URef(options_seed_uref);
     let depoll_question_key = Key::URef(question_ref);
+    // let depoll_options_key = Key::URef(options_seed_uref)
 
     // Put Keys to Contract context
     depoll_named_keys.insert(CONTRACT_QUESTION_KEY.to_string(), depoll_question_key);
-    depoll_named_keys.insert(CONTRACT_OPTIONS_DICT_REF.to_string(), depoll_dict_key);
+    depoll_named_keys.insert(CONTRACT_OPTIONS_KEY.to_string(), depoll_dict_key);
 
     // Create entry points for this contract
     let mut depoll_entry_points = EntryPoints::new();
@@ -141,12 +142,14 @@ pub extern "C" fn call() {
     let depoll_contract_version_ref = storage::new_uref(depoll_contract_version_hash);
     let depoll_contract_key = Key::URef(depoll_contract_uref);
     let depoll_version_key = Key::URef(depoll_contract_version_ref);
+    let options_dict_seed_ref = storage::new_uref(options_dict_seed_uref);
+    let options_dict_seed_key = Key::URef(options_dict_seed_ref);
     // depoll_named_keys.insert(CONTRACT_VERSION_KEY.to_string(), depoll_version_key);
     // depoll_named_keys.insert(CONTRACT_HASH.to_string(), depoll_contract_key);
 
     // Put the NamedKey values.
     // runtime::put_key(CONTRACT_QUESTION_KEY, depoll_question_key);
     runtime::put_key(CONTRACT_VERSION_KEY, depoll_version_key);
-    // runtime::put_key(CONTRACT_OPTIONS_DICT_REF, depoll_dict_key);
+    runtime::put_key(CONTRACT_OPTIONS_KEY, depoll_dict_key);
     runtime::put_key(CONTRACT_HASH, depoll_contract_key);
 }
