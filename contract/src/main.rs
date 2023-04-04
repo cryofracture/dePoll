@@ -116,7 +116,7 @@ pub extern "C" fn call() {
 
     // Put Keys to Contract context
     depoll_named_keys.insert(CONTRACT_QUESTION_KEY.to_string(), depoll_question_key);
-    depoll_named_keys.insert(CONTRACT_OPTIONS_KEY.to_string(), depoll_dict_key);
+    depoll_named_keys.insert(CONTRACT_OPTIONS_KEY.to_string(), options_dict_seed_uref.into());
 
     // Create entry points for this contract
     let mut depoll_entry_points = EntryPoints::new();
