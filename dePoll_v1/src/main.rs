@@ -8,7 +8,6 @@ compile_error!("target arch should be wasm32: compile with '--target wasm32-unkn
 // `no_std` environment.
 extern crate alloc;
 
-use alloc::vec::Vec;
 use alloc::{
     string::{String, ToString},
     vec,
@@ -26,16 +25,15 @@ use casper_types::{
 
 const CONTRACT_QUESTION_KEY: &str = "dePoll_question";
 const CONTRACT_OPTIONS_KEY: &str = "dePoll_options";
-const CONTRACT_OPTIONS_DICT_REF: &str = "dePoll_dict_hash";
-const CONTRACT_VOTES_KEY: &str = "dePoll_votes";
 const CONTRACT_HASH: &str = "dePoll_contract_hash";
-const CONTRACT_PACKAGE_HASH: &str = "dePoll_contract_package_hash";
+const CONTRACT_OPTIONS_DICT_REF: &str = "dePoll_dict_uref";
 const CONTRACT_VERSION_KEY: &str = "version";
 const RUNTIME_QUESTION_ARG: &str = "question";
 const RUNTIME_OPTION_ONE_ARG: &str = "option_one";
 const RUNTIME_OPTION_TWO_ARG: &str = "option_two";
 const RUNTIME_ADD_OPTION_ARG: &str = "add_option";
 const ENTRY_POINT_VOTE: &str = "vote";
+const ENTRY_POINT_ADD_OPTION: &str = "add_option";
 const RUNTIME_VOTE_ARG: &str = "vote_for";
 const INITIAL_VOTE_COUNT: u64 = 0;
 
@@ -46,11 +44,28 @@ enum Error {
     KeyAlreadyExists = 0,
     KeyMismatch = 1,
     InvalidVoteSubmission = 2,
+    InvalidNewPollOption = 3,
 }
 
 impl From<Error> for ApiError {
     fn from(error: Error) -> Self {
         ApiError::User(error as u16)
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn add_option() {
+    let new_option: String = runtime::get_named_arg(RUNTIME_ADD_OPTION_ARG);
+
+    let options_dict_seed_uref: URef = runtime::get_key(CONTRACT_OPTIONS_KEY)
+        .unwrap_or_revert_with(ApiError::MissingKey)
+        .into_uref()
+        .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
+
+    match storage::dictionary_get::<u64>(options_dict_seed_uref, &new_option).unwrap_or_revert()
+    {
+        None => storage::dictionary_put(options_dict_seed_uref, &new_option, INITIAL_VOTE_COUNT),
+        Some(_) => runtime::revert(Error::InvalidNewPollOption),
     }
 }
 
@@ -67,7 +82,7 @@ pub extern "C" fn vote() {
         storage::dictionary_get(options_dict_seed_uref, &new_vote)
             .unwrap_or_revert_with(ApiError::Read)
             .unwrap_or_revert_with(ApiError::ValueNotFound);
-    let mut new_option_value: u64 = old_option_value + 1;
+    let new_option_value: u64 = old_option_value + 1;
 
     // Update the value of the vote option in the dictionary
     match storage::dictionary_get::<u64>(options_dict_seed_uref, &new_vote).unwrap_or_revert() {
@@ -85,16 +100,9 @@ pub extern "C" fn call() {
 
     let options = vec![option_one, option_two];
 
-    // Create a new Poll instance and call its init function with the options argument
     let options_dict_seed_uref = storage::new_dictionary(CONTRACT_OPTIONS_KEY).unwrap_or_revert();
-    // let mut depoll_named_keys = NamedKeys::new();
 
     for option in options {
-        // let option_ref = storage::new_uref(option);
-        //
-        // runtime::put_key(&option.clone(), option_ref.into());
-        // runtime::put_key(CONTRACT_OPTIONS_DICT_REF, casper_types::Key::URef(options_dict_seed_uref));
-        // Add poll option one
         match storage::dictionary_get::<u64>(options_dict_seed_uref, &option).unwrap_or_revert()
         {
             None => storage::dictionary_put(options_dict_seed_uref, &option, INITIAL_VOTE_COUNT),
@@ -103,16 +111,14 @@ pub extern "C" fn call() {
     }
 
     let mut depoll_named_keys = NamedKeys::new();
-    // Create new URefs for namedkeys
 
+    // Create new URefs for namedkeys
     let options_seed_uref = storage::new_uref(options_dict_seed_uref);
     let question_ref = storage::new_uref(question);
 
     // Create new Keys
-
     let depoll_dict_key = Key::URef(options_seed_uref);
     let depoll_question_key = Key::URef(question_ref);
-    // let depoll_options_key = Key::URef(options_seed_uref)
 
     // Put Keys to Contract context
     depoll_named_keys.insert(CONTRACT_QUESTION_KEY.to_string(), depoll_question_key);
@@ -130,12 +136,21 @@ pub extern "C" fn call() {
         EntryPointType::Contract,
     ));
 
+    // Entrypoint to add new option
+    depoll_entry_points.add_entry_point(EntryPoint::new(
+        ENTRY_POINT_ADD_OPTION,
+        vec![Parameter::new(RUNTIME_ADD_OPTION_ARG, CLType::String)],
+        CLType::String,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
     // Create a new contract package with various NamedKeys, applied contract package hash, and entrypoints.
     let (depoll_contract_hash, depoll_contract_version_hash) = storage::new_contract(
         depoll_entry_points,
         Some(depoll_named_keys),
-        Some("depoll_package_hash".to_string()),
-        Some("depoll_contract_access_uref".to_string()),
+        Some("dePoll_package_hash".to_string()),
+        Some("dePoll_contract_access_uref".to_string()),
     );
 
     let depoll_contract_uref = storage::new_uref(depoll_contract_hash);
@@ -152,4 +167,5 @@ pub extern "C" fn call() {
     runtime::put_key(CONTRACT_VERSION_KEY, depoll_version_key);
     runtime::put_key(CONTRACT_OPTIONS_KEY, depoll_dict_key);
     runtime::put_key(CONTRACT_HASH, depoll_contract_key);
+    runtime::put_key(CONTRACT_OPTIONS_DICT_REF, options_dict_seed_key);
 }
