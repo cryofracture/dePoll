@@ -1,7 +1,7 @@
 prepare:
 	rustup target add wasm32-unknown-unknown
 
-build-contracts:
+build-contract:
 	cd dePoll_v* && cargo build --release --target wasm32-unknown-unknown
 	wasm-strip depoll_v*/target/wasm32-unknown-unknown/release/dePoll_v*.wasm 2>/dev/null | true
 
