@@ -21,7 +21,8 @@ use casper_contract::{
 use casper_types::{
     api_error::ApiError,
     contracts::{EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, NamedKeys},
-    CLType, Key, Parameter, URef, runtime_args, CLValue
+    CLType, Key, Parameter, URef, runtime_args, CLValue,
+    account::AccountHash,
 };
 
 use crate::runtime_args::RuntimeArgs;
@@ -34,6 +35,7 @@ const CONTRACT_KEY_POLL_START: &str = "poll_start";
 const CONTRACT_KEY_POLL_END: &str = "poll_end";
 const CONTRACT_KEY_VERSION: &str = "version";
 const CONTRACT_KEY_RESULTS: &str = "dePoll_results";
+const CONTRACT_OPTION_COUNT: &str = "dePoll_option_count";
 
 // Contract Variables
 const CONTRACT_HASH: &str = "dePoll_contract_hash";
@@ -41,20 +43,24 @@ const CONTRACT_OPTIONS_DICT_REF: &str = "dePoll_dict_uref";
 const INITIAL_VOTE_COUNT: u64 = 0;
 const KEY_POLL_END: &str = "poll_end";
 const INSTALLER: &str = "installer";
+const SECONDS_PER_MIN: u64 = 60;
+const MILLI_PER_SEC: u64 = 1000;
 
 // Runtime Arguments
 const RUNTIME_ARG_QUESTION: &str = "question";
 const RUNTIME_ARG_OPTION_ONE: &str = "option_one";
 const RUNTIME_ARG_OPTION_TWO: &str = "option_two";
-const RUNTIME_ARG_ADD_OPTION: &str = "add_option";
+const RUNTIME_ARG_ADD_OPTION: &str = "add_poll_option";
 const RUNTIME_ARG_CAST_VOTE: &str = "vote_for";
 const RUNTIME_ARG_POLL_LENGTH: &str = "poll_length";
+const RUNTIME_ARG_EXTEND_POLL: &str = "extend_duration";
 
 
 // Entrypoints
 const ENTRY_POINT_VOTE: &str = "vote";
 const ENTRY_POINT_ADD_OPTION: &str = "add_option";
 const ENTRY_POINT_INIT: &str = "init";
+const ENTRY_POINT_EXTEND_POLL: &str = "extend_poll";
 
 /// An error enum which can be converted to a `u16` so it can be returned as an `ApiError::User`.
 #[repr(u16)]
@@ -65,6 +71,7 @@ enum Error {
     InvalidVoteSubmission = 2,
     InvalidNewPollOption = 3,
     PollNoLongerOpen = 4,
+    UnauthorizedRequest = 5,
 }
 
 impl From<Error> for ApiError {
@@ -108,6 +115,21 @@ pub extern "C" fn init() {
     // Compute poll_end time and store in dictionary
     runtime::put_key(CONTRACT_OPTIONS_DICT_REF, options_dict_seed_uref.into());
 
+    let mut poll_option_one_key: String = "dePoll_option_one".to_string();
+    let mut poll_option_two_key: String = "dePoll_option_two".to_string();
+    let option_count:u8 = 2;
+
+    let option_one_ref = storage::new_uref(&*option_one);
+    let option_two_ref = storage::new_uref(&*option_two);
+    let option_count_ref = storage::new_uref(option_count);
+
+    let option_count_key = Key::URef(option_count_ref);
+
+    runtime::put_key(&poll_option_one_key, option_one_ref.into());
+    runtime::put_key(&poll_option_two_key, option_two_ref.into());
+    runtime::put_key(CONTRACT_OPTION_COUNT, option_count_key);
+
+
     match storage::dictionary_get::<u64>(options_dict_seed_uref, &option_one).unwrap_or_revert()
     {
         None => {
@@ -120,8 +142,7 @@ pub extern "C" fn init() {
 }
 
 #[no_mangle]
-pub extern "C" fn add_option() {
-    let new_option: String = runtime::get_named_arg(RUNTIME_ARG_ADD_OPTION);
+pub extern "C" fn extend_poll() {
     let current_blocktime = u64::from(runtime::get_blocktime());
     let poll_end_ref: URef = runtime::get_key(CONTRACT_KEY_POLL_END)
         .unwrap_or_revert_with(ApiError::MissingKey)
@@ -131,19 +152,67 @@ pub extern "C" fn add_option() {
         .unwrap_or_revert_with(ApiError::Read)
         .unwrap_or_revert_with(ApiError::ValueNotFound);
 
+    if current_blocktime <= poll_end_time {
+
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn add_option() {
+    let new_option: String = runtime::get_named_arg(RUNTIME_ARG_ADD_OPTION);
+    let current_blocktime = u64::from(runtime::get_blocktime());
+
+    let option_count_ref: URef = runtime::get_key(CONTRACT_OPTION_COUNT)
+        .unwrap_or_revert_with(ApiError::MissingKey)
+        .into_uref()
+        .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
+
+    let old_option_count: u8 = storage::read(option_count_ref)
+        .unwrap_or_revert_with(ApiError::Read)
+        .unwrap_or_revert_with(ApiError::ValueNotFound);
+
+    let new_option_count: u8 = old_option_count + 1;
+
+    let old_option_count_str = &old_option_count.to_string();
+    let new_option_count_str = &new_option_count.to_string();
+
+    let new_option_key: String = "dePoll_option_".to_string() + new_option_count_str;
+    let new_option_ref = storage::new_uref(&*new_option_key);
+
+    runtime::put_key(&new_option_key, new_option_ref.into());
+
+    storage::write(option_count_ref, new_option_count);
+
+    let poll_end_ref: URef = runtime::get_key(CONTRACT_KEY_POLL_END)
+        .unwrap_or_revert_with(ApiError::MissingKey)
+        .into_uref()
+        .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
+
+    let poll_end_time: u64 = storage::read(poll_end_ref)
+        .unwrap_or_revert_with(ApiError::Read)
+        .unwrap_or_revert_with(ApiError::ValueNotFound);
+
     let options_dict_seed_uref: URef = runtime::get_key(CONTRACT_KEY_OPTIONS)
         .unwrap_or_revert_with(ApiError::MissingKey)
         .into_uref()
         .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
 
-    if current_blocktime <= poll_end_time {
-        match storage::dictionary_get::<u64>(options_dict_seed_uref, &new_option).unwrap_or_revert()
-        {
-            None => storage::dictionary_put(options_dict_seed_uref, &new_option, INITIAL_VOTE_COUNT),
-            Some(_) => runtime::revert(Error::InvalidNewPollOption),
-        }
-    } else { runtime::revert(Error::PollNoLongerOpen) }
+    let poll_owner: AccountHash = runtime::get_key(INSTALLER)
+        .unwrap_or_revert_with(ApiError::MissingKey)
+        .into_account()
+        .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
 
+    let caller = runtime::get_caller();
+
+    if caller == poll_owner {
+        if current_blocktime < poll_end_time {
+            match storage::dictionary_get::<u64>(options_dict_seed_uref, &new_option).unwrap_or_revert()
+            {
+                None => storage::dictionary_put(options_dict_seed_uref, &new_option, INITIAL_VOTE_COUNT),
+                Some(_) => runtime::revert(Error::InvalidNewPollOption),
+            }
+        }
+    } else { runtime::revert(Error::UnauthorizedRequest)}
 }
 
 #[no_mangle]
@@ -218,10 +287,18 @@ pub extern "C" fn call() {
         EntryPointType::Contract,
     ));
 
+    depoll_entry_points.add_entry_point(EntryPoint::new(
+        ENTRY_POINT_EXTEND_POLL,
+        vec![Parameter::new(RUNTIME_ARG_EXTEND_POLL, CLType::String)],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
     let mut depoll_named_keys = NamedKeys::new();
     let poll_start_time = u64::from(runtime::get_blocktime());
     let poll_length: u64 = runtime::get_named_arg(RUNTIME_ARG_POLL_LENGTH);
-    let poll_end_time = poll_start_time + poll_length * 60 * 1000; // add 5 minutes: 5 minutes of 60 seconds with 1000 milliseconds per second
+    let poll_end_time: u64 = poll_start_time + poll_length * SECONDS_PER_MIN * MILLI_PER_SEC; // add 5 minutes: 5 minutes of 60 seconds with 1000 milliseconds per second
 
     // Create new URefs for namedkeys
     let poll_start_ref = storage::new_uref(poll_start_time);
@@ -253,7 +330,6 @@ pub extern "C" fn call() {
             RUNTIME_ARG_QUESTION => runtime::get_named_arg::<String>(RUNTIME_ARG_QUESTION),
             RUNTIME_ARG_OPTION_ONE => runtime::get_named_arg::<String>(RUNTIME_ARG_OPTION_ONE),
             RUNTIME_ARG_OPTION_TWO => runtime::get_named_arg::<String>(RUNTIME_ARG_OPTION_TWO),
-            RUNTIME_ARG_POLL_LENGTH => runtime::get_named_arg::<String>(RUNTIME_ARG_POLL_LENGTH),
         },
     );
 
