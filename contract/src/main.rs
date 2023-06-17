@@ -62,7 +62,7 @@ const ENTRY_POINT_ADD_OPTION: &str = "add_option";
 const ENTRY_POINT_INIT: &str = "init";
 const ENTRY_POINT_EXTEND_POLL: &str = "extend_poll";
 
-/// An error enum which can be converted to a `u16` so it can be returned as an `ApiError::User`.
+/// An error enum which can be converted to a `u16` so it can be returned as an `ApiError::User(Error)`.
 #[repr(u16)]
 #[allow(dead_code)]
 enum Error {
@@ -91,7 +91,8 @@ pub extern "C" fn init() {
     let option_one: String = runtime::get_named_arg(RUNTIME_ARG_OPTION_ONE);
     let option_two: String = runtime::get_named_arg(RUNTIME_ARG_OPTION_TWO);
 
-    let poll_start_ref: URef = runtime::get_key(CONTRACT_KEY_POLL_END)
+    // Gets contract's context and retrieves the poll_start u64 value
+    let poll_start_ref: URef = runtime::get_key(CONTRACT_KEY_POLL_START)
         .unwrap_or_revert_with(ApiError::MissingKey)
         .into_uref()
         .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
@@ -99,6 +100,7 @@ pub extern "C" fn init() {
         .unwrap_or_revert_with(ApiError::Read)
         .unwrap_or_revert_with(ApiError::ValueNotFound);
 
+    // Gets contract's context and retrieves the poll_end u64 value
     let poll_end_ref: URef = runtime::get_key(CONTRACT_KEY_POLL_END)
         .unwrap_or_revert_with(ApiError::MissingKey)
         .into_uref()
@@ -152,8 +154,14 @@ pub extern "C" fn extend_poll() {
         .unwrap_or_revert_with(ApiError::Read)
         .unwrap_or_revert_with(ApiError::ValueNotFound);
 
-    if current_blocktime <= poll_end_time {
+    let poll_extension_length: u64 = runtime::get_named_arg(RUNTIME_ARG_EXTEND_POLL);
+    let new_poll_end_time: u64 = poll_end_time + poll_extension_length * SECONDS_PER_MIN * MILLI_PER_SEC; // add 5 minutes: 5 minutes of 60 seconds with 1000 milliseconds per second
 
+
+    if current_blocktime <= poll_end_time {
+        storage::write(poll_end_ref, new_poll_end_time);
+    } else if current_blocktime > poll_end_time {
+        runtime::revert(Error::PollNoLongerOpen)
     }
 }
 
@@ -335,8 +343,8 @@ pub extern "C" fn call() {
 
     let depoll_contract_uref = storage::new_uref(depoll_contract_hash);
     let depoll_contract_key = Key::URef(depoll_contract_uref);
-    let options_dict_seed_ref = storage::new_uref(options_dict_seed_uref);
-    let options_dict_seed_key = Key::URef(options_dict_seed_ref);
+    // let options_dict_seed_ref = storage::new_uref(options_dict_seed_uref);
+    // let options_dict_seed_key = Key::URef(options_dict_seed_ref);
 
     // Put the NamedKey values.
     // runtime::put_key(CONTRACT_KEY_OPTIONS, options_dict_seed_key);
