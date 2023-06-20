@@ -3,7 +3,7 @@ prepare:
 
 build-contract:
 	cd contract && cargo build --release --target wasm32-unknown-unknown
-	wasm-strip contract/target/wasm32-unknown-unknown/release/contract.wasm 2>/dev/null | true
+	wasm-strip contract/target/wasm32-unknown-unknown/release/contract.wasm
 
 test: build-contract
 	mkdir -p tests/wasm
@@ -11,8 +11,8 @@ test: build-contract
 	cd tests && cargo test
 
 clippy:
-	cd contract && cargo clippy --all-targets -- -D warnings
-	cd tests && cargo clippy --all-targets -- -D warnings
+	cd contract && cargo clippy --release --target wasm32-unknown-unknown -- -D warnings
+	cd tests && cargo clippy --release --target wasm32-unknown-unknown -- -D warnings
 
 check-lint: clippy
 	cd contract && cargo fmt -- --check
