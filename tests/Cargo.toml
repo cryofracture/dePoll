@@ -1,5 +1,5 @@
 [package]
-name = "tests"
+name = "dePoll_tests"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,6 +10,7 @@ casper-contract = { version = "1.4.4", default-features = false, features = [
 casper-engine-test-support = { version = "5.0.0", features = ["test-support"] }
 casper-execution-engine = "5.0.0"
 casper-types = "3.0.0"
+
 
 [[bin]]
 name = "integration-tests"
