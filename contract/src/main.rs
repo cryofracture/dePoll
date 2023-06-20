@@ -12,8 +12,8 @@ use alloc::{
     string::{String, ToString},
     vec,
 };
-use alloc::vec::Vec;
 
+use alloc::vec::Vec;
 use casper_contract::{
     contract_api::{runtime, storage},
     unwrap_or_revert::UnwrapOrRevert,
@@ -21,25 +21,36 @@ use casper_contract::{
 use casper_types::{
     api_error::ApiError,
     contracts::{EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, NamedKeys},
+
     CLType, Key, Parameter, URef, runtime_args, CLValue,
     account::AccountHash,
 };
+use casper_types::{runtime_args, CLValue};
 
 use crate::runtime_args::RuntimeArgs;
 
 
 // NamedKey and DictKey Values
 const CONTRACT_QUESTION_KEY: &str = "dePoll_question";
-const CONTRACT_KEY_OPTIONS: &str = "dePoll_options";
-const CONTRACT_KEY_POLL_START: &str = "poll_start";
-const CONTRACT_KEY_POLL_END: &str = "poll_end";
-const CONTRACT_KEY_VERSION: &str = "version";
-const CONTRACT_KEY_RESULTS: &str = "dePoll_results";
-const CONTRACT_OPTION_COUNT: &str = "dePoll_option_count";
-
-// Contract Variables
+const CONTRACT_OPTIONS_KEY: &str = "dePoll_options";
+const CONTRACT_OPTIONS_DICT_UREF: &str = "dePoll_dict_seed_uref";
+// const CONTRACT_VOTES_KEY: &str = "dePoll_votes";
+const ACCESS_KEY: &str = "dePoll_contract_access_key";
 const CONTRACT_HASH: &str = "dePoll_contract_hash";
-const CONTRACT_OPTIONS_DICT_REF: &str = "dePoll_dict_uref";
+const CONTRACT_PACKAGE: &str = "dePoll_contract_package";
+
+const CONTRACT_VERSION_KEY: &str = "dePoll_version";
+const INIT: &str = "init";
+const INSTALLER: &str = "installer";
+
+const RUNTIME_QUESTION_ARG: &str = "question";
+const RUNTIME_OPTION_ONE_ARG: &str = "option_one";
+const RUNTIME_OPTION_TWO_ARG: &str = "option_two";
+const RUNTIME_ADD_OPTION_ARG: &str = "new_option";
+const ENTRY_POINT_ADD_OPTION: &str = "add_option";
+const ENTRY_POINT_VOTE: &str = "vote";
+const RUNTIME_VOTE_ARG: &str = "vote_for";
+
 const INITIAL_VOTE_COUNT: u64 = 0;
 const KEY_POLL_END: &str = "poll_end";
 const INSTALLER: &str = "installer";
@@ -138,6 +149,7 @@ pub extern "C" fn init() {
             storage::dictionary_put(options_dict_seed_uref, &option_one, INITIAL_VOTE_COUNT);
             storage::dictionary_put(options_dict_seed_uref, &option_two, INITIAL_VOTE_COUNT);
         }
+
         Some(_) => runtime::revert(Error::KeyAlreadyExists),
     }
     runtime::ret(CLValue::from_t(options_dict_seed_uref).unwrap_or_revert())
