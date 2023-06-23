@@ -85,6 +85,9 @@ impl From<Error> for ApiError {
     }
 }
 
+
+// Init function for the contract that is called in the call() function when the contract is installed. This function puts keys into the context of the contract,
+// not the installer.
 #[no_mangle]
 pub extern "C" fn init() {
     if runtime::get_key(CONTRACT_QUESTION_KEY).is_some() {
@@ -114,42 +117,54 @@ pub extern "C" fn init() {
         .unwrap_or_revert_with(ApiError::Read)
         .unwrap_or_revert_with(ApiError::ValueNotFound);
 
-    // Store new question
-    let question_ref = storage::new_uref(question);
-
+    // Create dictionary of options in the poll
     let options_dict_seed_uref = storage::new_dictionary(CONTRACT_KEY_OPTIONS).unwrap_or_revert();
-    // Compute poll_end time and store in dictionary
 
+    // Initial counter of options set at 2.
     let option_count:u8 = 2;
 
+    // Create URefs of options and option counter and question
+    let question_ref = storage::new_uref(question);
     let option_one_ref = storage::new_uref(&*option_one);
     let option_two_ref = storage::new_uref(&*option_two);
     let option_count_ref = storage::new_uref(option_count);
 
-    let option_count_key = Key::URef(option_count_ref);
 
-    runtime::put_key(CONTRACT_QUESTION_KEY, question_ref.into());
+    // Create Keys for Question, option counter, option one, and option two
+    let option_count_key = Key::URef(option_count_ref);
+    let option_one_key = Key::URef(option_one_ref);
+    let option_two_key = Key::URef(option_two_ref);
+    let question_key = Key::URef(question_ref);
+
+    // Into the context of the contract, put the namedkeys for Question, Options Dictionary,  option one, option_two, option counter.
+    runtime::put_key(CONTRACT_QUESTION_KEY, question_key);
     runtime::put_key(CONTRACT_OPTIONS_DICT_UREF, options_dict_seed_uref.into());
-    runtime::put_key(CONTRACT_KEY_OPTION_ONE, option_one_ref.into());
-    runtime::put_key(CONTRACT_KEY_OPTION_TWO, option_two_ref.into());
+    runtime::put_key(CONTRACT_KEY_OPTION_ONE, option_one_key);
+    runtime::put_key(CONTRACT_KEY_OPTION_TWO, option_two_key);
     runtime::put_key(CONTRACT_KEY_OPTIONS_COUNT, option_count_key);
 
 
+    // Check options dictionary for option one and option two. If none are found, put the two options into the dictionary
+    // If there is a result of Some() for either key, revert/panic that KeyAlreadyExists
     match storage::dictionary_get::<u64>(options_dict_seed_uref, &option_one).unwrap_or_revert()
     {
         None => {
             storage::dictionary_put(options_dict_seed_uref, &option_one, INITIAL_VOTE_COUNT);
             storage::dictionary_put(options_dict_seed_uref, &option_two, INITIAL_VOTE_COUNT);
         }
-
         Some(_) => runtime::revert(Error::KeyAlreadyExists),
     }
     runtime::ret(CLValue::from_t(options_dict_seed_uref).unwrap_or_revert())
 }
 
+
+// Entrypoint to extend the poll duration by a new amount of time, given in minutes.
 #[no_mangle]
 pub extern "C" fn extend_poll() {
+    // get unix timestamp of current block the call is executing in.
     let current_blocktime = u64::from(runtime::get_blocktime());
+
+    // Get the URef of the poll_end_time and convert to u64 value for comparison later.
     let poll_end_ref: URef = runtime::get_key(CONTRACT_KEY_POLL_END)
         .unwrap_or_revert_with(ApiError::MissingKey)
         .into_uref()

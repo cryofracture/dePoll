@@ -31,13 +31,14 @@ Smart contracts are implemented in [Rust](https://www.rust-lang.org/) using the 
 - MVP
     - [✓] Develop contract 🏬
     - [✓] Develop contract function that initializes new Poll 🚚
-    - [] Develop contract function that adds new Poll option 🚚
+    - [✓] Develop contract function that adds new Poll option 🚚
+    - [✓] Develop contract entrypoint that extends poll duration 🚚
 - Back-end
-    - [] Fine-tune contract functions to optimize/lower cost of contract calls.
+    - [✓] Fine-tune contract functions to optimize/lower cost of contract calls.
 - Housekeeping
-    - [] Document contract code
-    - [] Build out unit tests
-    - [] Simplify code
+    - [] Document contract code (In Progress)
+    - [] Build out unit tests (In Progress)
+    - [✓] Simplify code
 
 ### ❓Have questions?
 
