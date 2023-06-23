@@ -4,6 +4,10 @@ mod tests {
         DeployItemBuilder, ExecuteRequestBuilder, InMemoryWasmTestBuilder, WasmTestBuilder,
         ARG_AMOUNT, DEFAULT_ACCOUNT_ADDR, DEFAULT_PAYMENT, PRODUCTION_RUN_GENESIS_REQUEST
     };
+    use casper_contract::{
+        contract_api::{runtime, storage},
+        unwrap_or_revert::UnwrapOrRevert,
+    };
     use casper_execution_engine::core::{engine_state::Error as EngineStateError, execution};
     use casper_execution_engine::storage::global_state::in_memory::InMemoryGlobalState;
     use casper_types::ContractHash;
@@ -60,6 +64,20 @@ mod tests {
     #[test]
     fn should_have_a_stored_question_in_contract_context() {
         let builder = install_contract();
+
+        let contract_hash_ref = runtime::get_key(CONTRACT_HASH)
+            .unwrap_or_revert_with(ApiError::MissingKey)
+            .into_uref()
+            .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
+        let contract_hash = storage::read(contract_hash_ref)
+            .unwrap_or_revert_with(ApiError::Read)
+            .unwrap_or_revert_with(ApiError::ValueNotFound);
+
+        let contract = builder
+            .get_contract(contract_hash)
+            .expect("should have contract");
+        let named_keys = contract.named_keys();
+        dbg!(named_keys);
         // make assertion
         let question = builder
             .query(

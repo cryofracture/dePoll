@@ -38,6 +38,7 @@ const CONTRACT_HASH: &str = "dePoll_contract_hash";
 const CONTRACT_PACKAGE: &str = "dePoll_contract_package";
 const CONTRACT_KEY_POLL_START: &str = "poll_start";
 const CONTRACT_KEY_POLL_END: &str = "poll_end";
+const CONTRACT_KEY_POLL_LENGTH: &str = "poll_length";
 const CONTRACT_VERSION_KEY: &str = "dePoll_version";
 const CONTRACT_KEY_OPTION_ONE: &str = "dePoll_option_one";
 const CONTRACT_KEY_OPTION_TWO: &str = "dePoll_option_two";
@@ -158,8 +159,7 @@ pub extern "C" fn extend_poll() {
         .unwrap_or_revert_with(ApiError::ValueNotFound);
 
     let poll_extension_length: u64 = runtime::get_named_arg(RUNTIME_ARG_EXTEND_POLL);
-    let new_poll_end_time: u64 = poll_end_time + poll_extension_length * SECONDS_PER_MIN * MILLI_PER_SEC; // add 5 minutes: 5 minutes of 60 seconds with 1000 milliseconds per second
-
+    let new_poll_end_time: u64 = poll_end_time + poll_extension_length * SECONDS_PER_MIN * MILLI_PER_SEC; // add 5 minutes: 5 minutes of 60 seconds with 1000 milliseconds per secon
 
     if current_blocktime <= poll_end_time {
         storage::write(poll_end_ref, new_poll_end_time);
@@ -273,7 +273,6 @@ pub extern "C" fn call() {
             Parameter::new(RUNTIME_ARG_QUESTION, CLType::String),
             Parameter::new(RUNTIME_ARG_OPTION_ONE, CLType::String),
             Parameter::new(RUNTIME_ARG_OPTION_TWO, CLType::String),
-            Parameter::new(RUNTIME_ARG_POLL_LENGTH, CLType::String),
         ],
         CLType::URef,
         EntryPointAccess::Public,
@@ -309,19 +308,22 @@ pub extern "C" fn call() {
     let mut depoll_named_keys = NamedKeys::new();
     let poll_start_time = u64::from(runtime::get_blocktime());
     let poll_length: u64 = runtime::get_named_arg(RUNTIME_ARG_POLL_LENGTH);
-    let poll_end_time: u64 = poll_start_time + poll_length * SECONDS_PER_MIN * MILLI_PER_SEC; // add 5 minutes: 5 minutes of 60 seconds with 1000 milliseconds per second
+    let poll_end_time: u64 = &poll_start_time + &poll_length * SECONDS_PER_MIN * MILLI_PER_SEC; // add 5 minutes: 5 minutes of 60 seconds with 1000 milliseconds per second
 
     // Create new URefs for namedkeys
     let poll_start_ref = storage::new_uref(poll_start_time);
     let poll_end_ref = storage::new_uref(poll_end_time);
+    let poll_length_ref = storage::new_uref(poll_length);
 
     // Create new Keys
     let poll_start_key = Key::URef(poll_start_ref);
     let poll_end_key = Key::URef(poll_end_ref);
+    let poll_length_key = Key::URef(poll_length_ref);
 
     // Put Keys to Contract context
-    depoll_named_keys.insert(CONTRACT_KEY_POLL_START.to_string(), poll_start_key.into());
-    depoll_named_keys.insert(CONTRACT_KEY_POLL_END.to_string(), poll_end_key.into());
+    depoll_named_keys.insert(CONTRACT_KEY_POLL_START.to_string(), poll_start_key);
+    depoll_named_keys.insert(CONTRACT_KEY_POLL_END.to_string(), poll_end_key);
+    depoll_named_keys.insert(CONTRACT_KEY_POLL_LENGTH.to_string(), poll_length_key);
     depoll_named_keys.insert(INSTALLER.to_string(), runtime::get_caller().into());
 
 
@@ -333,7 +335,7 @@ pub extern "C" fn call() {
         Some("dePoll_contract_access_key".to_string()),
     );
 
-    // Calls INIT entry point of the new contract (should be conditionned on upgrades)
+    // Calls INIT entry point of the new contract (should be conditioned on upgrades)
     let options_dict_seed_uref = runtime::call_contract::<URef>(
         depoll_contract_hash,
         ENTRY_POINT_INIT,
@@ -346,9 +348,12 @@ pub extern "C" fn call() {
 
     let depoll_contract_uref = storage::new_uref(depoll_contract_hash);
     let depoll_contract_key = Key::URef(depoll_contract_uref);
+    let depoll_version_uref = storage::new_uref(depoll_contract_version_hash);
+    let depoll_verion_key = Key::URef(depoll_version_uref);
     // let options_dict_seed_ref = storage::new_uref(options_dict_seed_uref);
     // let options_dict_seed_key = Key::URef(options_dict_seed_ref);
 
+    runtime::put_key(CONTRACT_VERSION_KEY, depoll_verion_key);
     // Put the NamedKey values.
     // runtime::put_key(CONTRACT_KEY_OPTIONS, options_dict_seed_key);
     runtime::put_key(CONTRACT_HASH, depoll_contract_key);
