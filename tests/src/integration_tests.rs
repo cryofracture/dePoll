@@ -338,7 +338,7 @@ mod tests {
             .as_contract()
             .unwrap()
             .named_keys()
-            .get(INSTALLER)
+            .get(CONTRACT_HASH)
             .unwrap();
 
         assert_eq!(installer, &Key::Account(*DEFAULT_ACCOUNT_ADDR));

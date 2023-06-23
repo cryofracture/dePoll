@@ -361,8 +361,8 @@ pub extern "C" fn call() {
         },
     );
 
-    let depoll_contract_uref = storage::new_uref(depoll_contract_hash);
-    let depoll_contract_key = Key::URef(depoll_contract_uref);
+    // let depoll_contract_uref = storage::new_uref(depoll_contract_hash);
+    // let depoll_contract_key = Key::URef(depoll_contract_uref);
     let depoll_version_uref = storage::new_uref(depoll_contract_version_hash);
     let depoll_verion_key = Key::URef(depoll_version_uref);
     // let options_dict_seed_ref = storage::new_uref(options_dict_seed_uref);
@@ -371,7 +371,7 @@ pub extern "C" fn call() {
     runtime::put_key(CONTRACT_VERSION_KEY, depoll_verion_key);
     // Put the NamedKey values.
     // runtime::put_key(CONTRACT_KEY_OPTIONS, options_dict_seed_key);
-    runtime::put_key(CONTRACT_HASH, depoll_contract_key);
+    runtime::put_key(CONTRACT_HASH, depoll_contract_hash.into());
 
     // Store dict seed uref in caller/installer context
     // This is not required, only information purpose
