@@ -7,7 +7,7 @@ build-contract:
 
 test: build-contract
 	mkdir -p tests/wasm
-	cp contract/target/wasm32-unknown-unknown/release/dePoll_v*.wasm tests/wasm
+	cp contract/target/wasm32-unknown-unknown/release/contract.wasm tests/wasm
 	cd tests && cargo test
 
 clippy:

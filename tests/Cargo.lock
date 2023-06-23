@@ -357,6 +357,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dePoll_tests"
+version = "0.1.0"
+dependencies = [
+ "casper-contract",
+ "casper-engine-test-support",
+ "casper-execution-engine",
+ "casper-types 3.0.0",
+]
+
+[[package]]
 name = "derp"
 version = "0.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1344,16 +1354,6 @@ dependencies = [
  "redox_syscall",
  "rustix",
  "windows-sys 0.45.0",
-]
-
-[[package]]
-name = "tests"
-version = "0.1.0"
-dependencies = [
- "casper-contract",
- "casper-engine-test-support",
- "casper-execution-engine",
- "casper-types 3.0.0",
 ]
 
 [[package]]

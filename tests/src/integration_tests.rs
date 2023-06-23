@@ -2,7 +2,7 @@
 mod tests {
     use casper_engine_test_support::{
         DeployItemBuilder, ExecuteRequestBuilder, InMemoryWasmTestBuilder, WasmTestBuilder,
-        ARG_AMOUNT, DEFAULT_ACCOUNT_ADDR, DEFAULT_PAYMENT, DEFAULT_RUN_GENESIS_REQUEST,
+        ARG_AMOUNT, DEFAULT_ACCOUNT_ADDR, DEFAULT_PAYMENT, PRODUCTION_RUN_GENESIS_REQUEST
     };
     use casper_execution_engine::core::{engine_state::Error as EngineStateError, execution};
     use casper_execution_engine::storage::global_state::in_memory::InMemoryGlobalState;
@@ -11,25 +11,51 @@ mod tests {
     use casper_types::{runtime_args, RuntimeArgs};
     use std::path::PathBuf;
 
-    const CONTRACT_WASM: &str = "contract.wasm";
-    const CONTRACT_HASH: &str = "dePoll_contract_hash";
-
-    const RUNTIME_QUESTION_ARG: &str = "question";
-    const RUNTIME_OPTION_ONE_ARG: &str = "option_one";
-    const RUNTIME_OPTION_TWO_ARG: &str = "option_two";
+    // NamedKey and DictKey Values
     const CONTRACT_QUESTION_KEY: &str = "dePoll_question";
-    const QUESTION_VALUE: &str = "Favorite color?";
+    const CONTRACT_KEY_OPTIONS: &str = "dePoll_options";
+    const CONTRACT_KEY_OPTIONS_COUNT: &str = "dePoll_option_count";
+    const CONTRACT_OPTIONS_DICT_UREF: &str = "dePoll_dict_seed_uref";
+    const CONTRACT_ACCESS_KEY: &str = "dePoll_contract_access_key";
+    const CONTRACT_HASH: &str = "dePoll_contract_hash";
+    const CONTRACT_PACKAGE: &str = "dePoll_contract_package";
+    const CONTRACT_KEY_POLL_START: &str = "poll_start";
+    const CONTRACT_KEY_POLL_END: &str = "poll_end";
+    const CONTRACT_VERSION_KEY: &str = "dePoll_version";
+    const CONTRACT_KEY_OPTION_ONE: &str = "dePoll_option_one";
+    const CONTRACT_KEY_OPTION_TWO: &str = "dePoll_option_two";
+    const CONTRACT_KEY_OPTION_X: &str = "dePoll_option_";
+
+    // Contract Constants
     const INSTALLER: &str = "installer";
-    const RUNTIME_ADD_OPTION_ARG: &str = "new_option";
-    const ENTRY_POINT_ADD_OPTION: &str = "add_option";
-    const ENTRY_POINT_VOTE: &str = "vote";
+    const INITIAL_VOTE_COUNT: u64 = 0;
+    const SECONDS_PER_MIN: u64 = 60;
+    const MILLI_PER_SEC: u64 = 1000;
+    const INIT: &str = "init";
     const RUNTIME_VOTE_ARG: &str = "vote_for";
+    const KEY_POLL_END: &str = "poll_end";
+    const CONTRACT_WASM: &str = "contract.wasm";
+    const QUESTION_VALUE: &str = "Favorite color?";
     const RED: &str = "red";
     const GREEN: &str = "green";
+    const YELLOW: &str = "yellow";
 
-    const CONTRACT_OPTIONS_DICT_UREF: &str = "dePoll_dict_seed_uref";
-    const CONTRACT_OPTIONS_KEY: &str = "dePoll_options";
-    const INITIAL_VOTE_COUNT: u64 = 0;
+    // Runtime Arguments
+    const RUNTIME_ARG_QUESTION: &str = "question";
+    const RUNTIME_ARG_OPTION_ONE: &str = "option_one";
+    const RUNTIME_ARG_OPTION_TWO: &str = "option_two";
+    const RUNTIME_ARG_ADD_OPTION: &str = "add_poll_option";
+    const RUNTIME_ARG_CAST_VOTE: &str = "vote_for";
+    const RUNTIME_ARG_POLL_LENGTH: &str = "poll_length";
+    const RUNTIME_ARG_EXTEND_POLL: &str = "extend_duration";
+
+
+    // Entrypoints
+    const ENTRY_POINT_VOTE: &str = "vote";
+    const ENTRY_POINT_ADD_OPTION: &str = "add_option";
+    const ENTRY_POINT_INIT: &str = "init";
+    const ENTRY_POINT_EXTEND_POLL: &str = "extend_poll";
+
 
     #[test]
     fn should_have_a_stored_question_in_contract_context() {
@@ -83,7 +109,7 @@ mod tests {
             .as_contract()
             .expect("must convert as contract")
             .named_keys()
-            .get(CONTRACT_OPTIONS_KEY)
+            .get(CONTRACT_KEY_OPTIONS)
             .expect("must have key")
             .as_uref()
             .expect("must convert to seed uref");
@@ -149,7 +175,7 @@ mod tests {
                 contract_hash,
                 ENTRY_POINT_ADD_OPTION,
                 runtime_args! {
-                    RUNTIME_ADD_OPTION_ARG => GREEN
+                    RUNTIME_ARG_ADD_OPTION => GREEN
                 },
             )
             .build();
@@ -167,7 +193,7 @@ mod tests {
                 contract_hash,
                 ENTRY_POINT_VOTE,
                 runtime_args! {
-                    RUNTIME_VOTE_ARG => GREEN
+                    RUNTIME_ARG_CAST_VOTE => GREEN
                 },
             )
             .build();
@@ -183,7 +209,7 @@ mod tests {
             .as_contract()
             .expect("must convert as contract")
             .named_keys()
-            .get(CONTRACT_OPTIONS_KEY)
+            .get(CONTRACT_KEY_OPTIONS)
             .expect("must have key")
             .as_uref()
             .expect("must convert to seed uref");
@@ -215,7 +241,7 @@ mod tests {
         let execute_request = ExecuteRequestBuilder::from_deploy_item(deploy_item).build();
 
         let mut builder = InMemoryWasmTestBuilder::default();
-        builder.run_genesis(&DEFAULT_RUN_GENESIS_REQUEST).commit();
+        builder.run_genesis(&PRODUCTION_RUN_GENESIS_REQUEST).commit();
         builder.exec(execute_request).commit().expect_failure();
 
         let error = ApiError::MissingArgument;
@@ -236,13 +262,13 @@ mod tests {
 
     fn install_contract() -> WasmTestBuilder<InMemoryGlobalState> {
         let mut builder = InMemoryWasmTestBuilder::default();
-        builder.run_genesis(&DEFAULT_RUN_GENESIS_REQUEST).commit();
+        builder.run_genesis(&PRODUCTION_RUN_GENESIS_REQUEST).commit();
 
         let session_code = PathBuf::from(CONTRACT_WASM);
         let session_args = runtime_args! {
-            RUNTIME_QUESTION_ARG => QUESTION_VALUE,
-            RUNTIME_OPTION_ONE_ARG => RED,
-            RUNTIME_OPTION_TWO_ARG => "yellow",
+            RUNTIME_ARG_QUESTION => QUESTION_VALUE,
+            RUNTIME_ARG_OPTION_ONE => RED,
+            RUNTIME_ARG_OPTION_TWO => YELLOW,
         };
 
         let deploy_item = DeployItemBuilder::new()

@@ -13,7 +13,6 @@ use alloc::{
     vec,
 };
 
-use alloc::vec::Vec;
 use casper_contract::{
     contract_api::{runtime, storage},
     unwrap_or_revert::UnwrapOrRevert,
@@ -25,35 +24,28 @@ use casper_types::{
     CLType, Key, Parameter, URef, runtime_args, CLValue,
     account::AccountHash,
 };
-use casper_types::{runtime_args, CLValue};
 
 use crate::runtime_args::RuntimeArgs;
 
 
 // NamedKey and DictKey Values
 const CONTRACT_QUESTION_KEY: &str = "dePoll_question";
-const CONTRACT_OPTIONS_KEY: &str = "dePoll_options";
+const CONTRACT_KEY_OPTIONS: &str = "dePoll_options";
+const CONTRACT_KEY_OPTIONS_COUNT: &str = "dePoll_option_count";
 const CONTRACT_OPTIONS_DICT_UREF: &str = "dePoll_dict_seed_uref";
-// const CONTRACT_VOTES_KEY: &str = "dePoll_votes";
-const ACCESS_KEY: &str = "dePoll_contract_access_key";
+const CONTRACT_ACCESS_KEY: &str = "dePoll_contract_access_key";
 const CONTRACT_HASH: &str = "dePoll_contract_hash";
 const CONTRACT_PACKAGE: &str = "dePoll_contract_package";
-
+const CONTRACT_KEY_POLL_START: &str = "poll_start";
+const CONTRACT_KEY_POLL_END: &str = "poll_end";
 const CONTRACT_VERSION_KEY: &str = "dePoll_version";
-const INIT: &str = "init";
+const CONTRACT_KEY_OPTION_ONE: &str = "dePoll_option_one";
+const CONTRACT_KEY_OPTION_TWO: &str = "dePoll_option_two";
+const CONTRACT_KEY_OPTION_X: &str = "dePoll_option_";
+
+// Contract Constants
 const INSTALLER: &str = "installer";
-
-const RUNTIME_QUESTION_ARG: &str = "question";
-const RUNTIME_OPTION_ONE_ARG: &str = "option_one";
-const RUNTIME_OPTION_TWO_ARG: &str = "option_two";
-const RUNTIME_ADD_OPTION_ARG: &str = "new_option";
-const ENTRY_POINT_ADD_OPTION: &str = "add_option";
-const ENTRY_POINT_VOTE: &str = "vote";
-const RUNTIME_VOTE_ARG: &str = "vote_for";
-
 const INITIAL_VOTE_COUNT: u64 = 0;
-const KEY_POLL_END: &str = "poll_end";
-const INSTALLER: &str = "installer";
 const SECONDS_PER_MIN: u64 = 60;
 const MILLI_PER_SEC: u64 = 1000;
 
@@ -72,6 +64,7 @@ const ENTRY_POINT_VOTE: &str = "vote";
 const ENTRY_POINT_ADD_OPTION: &str = "add_option";
 const ENTRY_POINT_INIT: &str = "init";
 const ENTRY_POINT_EXTEND_POLL: &str = "extend_poll";
+
 
 /// An error enum which can be converted to a `u16` so it can be returned as an `ApiError::User(Error)`.
 #[repr(u16)]
@@ -122,14 +115,10 @@ pub extern "C" fn init() {
 
     // Store new question
     let question_ref = storage::new_uref(question);
-    runtime::put_key(CONTRACT_QUESTION_KEY, question_ref.into());
 
     let options_dict_seed_uref = storage::new_dictionary(CONTRACT_KEY_OPTIONS).unwrap_or_revert();
     // Compute poll_end time and store in dictionary
-    runtime::put_key(CONTRACT_OPTIONS_DICT_REF, options_dict_seed_uref.into());
 
-    let mut poll_option_one_key: String = "dePoll_option_one".to_string();
-    let mut poll_option_two_key: String = "dePoll_option_two".to_string();
     let option_count:u8 = 2;
 
     let option_one_ref = storage::new_uref(&*option_one);
@@ -138,9 +127,11 @@ pub extern "C" fn init() {
 
     let option_count_key = Key::URef(option_count_ref);
 
-    runtime::put_key(&poll_option_one_key, option_one_ref.into());
-    runtime::put_key(&poll_option_two_key, option_two_ref.into());
-    runtime::put_key(CONTRACT_OPTION_COUNT, option_count_key);
+    runtime::put_key(CONTRACT_QUESTION_KEY, question_ref.into());
+    runtime::put_key(CONTRACT_OPTIONS_DICT_UREF, options_dict_seed_uref.into());
+    runtime::put_key(CONTRACT_KEY_OPTION_ONE, option_one_ref.into());
+    runtime::put_key(CONTRACT_KEY_OPTION_TWO, option_two_ref.into());
+    runtime::put_key(CONTRACT_KEY_OPTIONS_COUNT, option_count_key);
 
 
     match storage::dictionary_get::<u64>(options_dict_seed_uref, &option_one).unwrap_or_revert()
@@ -182,7 +173,7 @@ pub extern "C" fn add_option() {
     let new_option: String = runtime::get_named_arg(RUNTIME_ARG_ADD_OPTION);
     let current_blocktime = u64::from(runtime::get_blocktime());
 
-    let option_count_ref: URef = runtime::get_key(CONTRACT_OPTION_COUNT)
+    let option_count_ref: URef = runtime::get_key(CONTRACT_KEY_OPTIONS_COUNT)
         .unwrap_or_revert_with(ApiError::MissingKey)
         .into_uref()
         .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
@@ -196,7 +187,7 @@ pub extern "C" fn add_option() {
     let old_option_count_str = &old_option_count.to_string();
     let new_option_count_str = &new_option_count.to_string();
 
-    let new_option_key: String = "dePoll_option_".to_string() + new_option_count_str;
+    let new_option_key: String = CONTRACT_KEY_OPTION_X.to_string() + new_option_count_str;
     let new_option_ref = storage::new_uref(&*new_option_key);
 
     runtime::put_key(&new_option_key, new_option_ref.into());
@@ -364,5 +355,5 @@ pub extern "C" fn call() {
 
     // Store dict seed uref in caller/installer context
     // This is not required, only information purpose
-    runtime::put_key(CONTRACT_OPTIONS_DICT_REF, options_dict_seed_uref.into());
+    runtime::put_key(CONTRACT_OPTIONS_DICT_UREF, options_dict_seed_uref.into());
 }
