@@ -17,13 +17,7 @@ use casper_contract::{
     contract_api::{runtime, storage},
     unwrap_or_revert::UnwrapOrRevert,
 };
-use casper_types::{
-    api_error::ApiError,
-    contracts::{EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, NamedKeys},
-
-    CLType, Key, Parameter, URef, runtime_args, CLValue,
-    account::AccountHash,
-};
+use casper_types::{api_error::ApiError, contracts::{EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, NamedKeys}, CLType, Key, Parameter, URef, runtime_args, CLValue, account::AccountHash, ContractHash};
 
 use crate::runtime_args::RuntimeArgs;
 

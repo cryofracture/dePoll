@@ -293,7 +293,7 @@ mod tests {
         )
     }
 
-    fn install_contract() -> WasmTestBuilder<InMemoryGlobalState> {//, ContractHash) {
+    fn install_contract() -> WasmTestBuilder<InMemoryGlobalState> {
         let mut builder = InMemoryWasmTestBuilder::default();
         builder.run_genesis(&PRODUCTION_RUN_GENESIS_REQUEST).commit();
 
