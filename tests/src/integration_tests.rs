@@ -338,8 +338,8 @@ mod tests {
             .as_contract()
             .unwrap()
             .named_keys()
-            .get(CONTRACT_HASH)
-            .unwrap();
+            .get(CONTRACT_HASH);
+            //.unwrap_or();
 
         assert_eq!(installer, &Key::Account(*DEFAULT_ACCOUNT_ADDR));
 

@@ -17,7 +17,7 @@ use casper_contract::{
     contract_api::{runtime, storage},
     unwrap_or_revert::UnwrapOrRevert,
 };
-use casper_types::{api_error::ApiError, contracts::{EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, NamedKeys}, CLType, Key, Parameter, URef, runtime_args, CLValue, account::AccountHash, ContractHash};
+use casper_types::{api_error::ApiError, contracts::{EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, NamedKeys}, CLType, Key, Parameter, URef, runtime_args, CLValue, account::AccountHash,};
 
 use crate::runtime_args::RuntimeArgs;
 
@@ -98,7 +98,7 @@ pub extern "C" fn init() {
         .unwrap_or_revert_with(ApiError::MissingKey)
         .into_uref()
         .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
-    let poll_start_time: u64 = storage::read(poll_start_ref)
+    let _poll_start_time: u64 = storage::read(poll_start_ref)
         .unwrap_or_revert_with(ApiError::Read)
         .unwrap_or_revert_with(ApiError::ValueNotFound);
 
@@ -107,7 +107,7 @@ pub extern "C" fn init() {
         .unwrap_or_revert_with(ApiError::MissingKey)
         .into_uref()
         .unwrap_or_revert_with(ApiError::UnexpectedKeyVariant);
-    let poll_end_time: u64 = storage::read(poll_end_ref)
+    let _poll_end_time: u64 = storage::read(poll_end_ref)
         .unwrap_or_revert_with(ApiError::Read)
         .unwrap_or_revert_with(ApiError::ValueNotFound);
 
@@ -193,7 +193,7 @@ pub extern "C" fn add_option() {
 
     let new_option_count: u8 = old_option_count + 1;
 
-    let old_option_count_str = &old_option_count.to_string();
+    let _old_option_count_str = &old_option_count.to_string();
     let new_option_count_str = &new_option_count.to_string();
 
     let new_option_key: String = CONTRACT_KEY_OPTION_X.to_string() + new_option_count_str;
@@ -340,8 +340,8 @@ pub extern "C" fn call() {
     let (depoll_contract_hash, depoll_contract_version_hash) = storage::new_contract(
         depoll_entry_points,
         Some(depoll_named_keys),
-        Some("dePoll_contract_package".to_string()),
-        Some("dePoll_contract_access_key".to_string()),
+        Some(CONTRACT_PACKAGE.to_string()),
+        Some(CONTRACT_ACCESS_KEY.to_string()),
     );
 
     // Calls INIT entry point of the new contract (should be conditioned on upgrades)
