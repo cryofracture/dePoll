@@ -1,11 +1,9 @@
 #[cfg(test)]
 mod tests {
+    use casper_contract::contract_api::{runtime, storage};
     use casper_engine_test_support::{
         DeployItemBuilder, ExecuteRequestBuilder, InMemoryWasmTestBuilder, WasmTestBuilder,
-        ARG_AMOUNT, DEFAULT_ACCOUNT_ADDR, DEFAULT_PAYMENT, PRODUCTION_RUN_GENESIS_REQUEST
-    };
-    use casper_contract::{
-        contract_api::{runtime, storage},
+        ARG_AMOUNT, DEFAULT_ACCOUNT_ADDR, DEFAULT_PAYMENT, PRODUCTION_RUN_GENESIS_REQUEST,
     };
     use casper_execution_engine::core::{engine_state::Error as EngineStateError, execution};
     use casper_execution_engine::storage::global_state::in_memory::InMemoryGlobalState;
@@ -53,13 +51,11 @@ mod tests {
     const RUNTIME_ARG_POLL_LENGTH: &str = "poll_length";
     const RUNTIME_ARG_EXTEND_POLL: &str = "extend_duration";
 
-
     // Entrypoints
     const ENTRY_POINT_VOTE: &str = "vote";
     const ENTRY_POINT_ADD_OPTION: &str = "add_option";
     const ENTRY_POINT_INIT: &str = "init";
     const ENTRY_POINT_EXTEND_POLL: &str = "extend_poll";
-
 
     #[test]
     fn new_test() {
@@ -79,7 +75,6 @@ mod tests {
         let named_keys = contract.named_keys();
         dbg!(named_keys);
     }
-
 
     // #[test]
     // fn should_have_a_stored_question_in_contract_context() {
@@ -274,7 +269,9 @@ mod tests {
         let execute_request = ExecuteRequestBuilder::from_deploy_item(deploy_item).build();
 
         let mut builder = InMemoryWasmTestBuilder::default();
-        builder.run_genesis(&PRODUCTION_RUN_GENESIS_REQUEST).commit();
+        builder
+            .run_genesis(&PRODUCTION_RUN_GENESIS_REQUEST)
+            .commit();
         builder.exec(execute_request).commit().expect_failure();
 
         let error = ApiError::MissingArgument;
@@ -295,7 +292,9 @@ mod tests {
 
     fn install_contract() -> WasmTestBuilder<InMemoryGlobalState> {
         let mut builder = InMemoryWasmTestBuilder::default();
-        builder.run_genesis(&PRODUCTION_RUN_GENESIS_REQUEST).commit();
+        builder
+            .run_genesis(&PRODUCTION_RUN_GENESIS_REQUEST)
+            .commit();
 
         let session_code = PathBuf::from(CONTRACT_WASM);
         let session_args = runtime_args! {
@@ -336,12 +335,9 @@ mod tests {
             .unwrap();
         let installer = contract_hash
             .as_contract()
-            .unwrap()
-            .named_keys()
-            .get(CONTRACT_HASH);
-            //.unwrap_or();
+            .unwrap();
 
-        assert_eq!(installer, &Key::Account(*DEFAULT_ACCOUNT_ADDR));
+        assert_eq!(installer, Some(&Key::Account(*DEFAULT_ACCOUNT_ADDR)));
 
         builder
     }
